@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Admin Marketplace</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{background:#f4f6f9}
+.card{border:none;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.nilai{font-size:22px;font-weight:bold}
+canvas{max-height:160px}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="loginBox" class="container mt-5" style="max-width:400px;">
+  <h3>Login Admin</h3>
+  <input id="user" class="form-control mb-2" placeholder="Username">
+  <input id="pass" type="password" class="form-control mb-2" placeholder="Password">
+  <button class="btn btn-dark w-100" onclick="login()">Login</button>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;" class="container mt-3">
+
+
+<div class="d-flex align-items-center mb-4">
+
+  <img
+    src="https://i.ibb.co.com/cSwby35D/Gemini-Generated-Image-uyawjpuyawjpuyaw.png" alt="Gemini-Generated-Image-uyawjpuyawjpuyaw"
+    alt="Logo Marketplace"
+    style="
+      height:70px;
+      width:70px;
+      object-fit:cover;
+      border-radius:12px;
+      margin-right:15px;
+      background:#fff;
+      padding:4px;
+      box-shadow:0 2px 8px rgba(0,0,0,.15);
+    ">
+
+  <div>
+    <h4 class="mb-0">Dashboard Admin Marketplace</h4>
+    <small class="text-muted">
+      Sistem Manajemen Produk & Pesanan
+    </small>
+  </div>
+
+</div>
+
+<!-- CHART -->
+<div class="card mb-4">
+  <div class="card-body">
+    <h6>Grafik Omzet & Laba</h6>
+
+    <canvas id="chart" height="90"></canvas>
+
+  </div>
+</div>
+
+<!-- ================= INPUT PRODUK ================= -->
+<div class="card p-3 my-3">
+<h5>Tambah Produk</h5>
+
+<input id="namaProduk" class="form-control mb-2" placeholder="Nama produk">
+
+<input id="kategoriProduk" class="form-control mb-2" placeholder="Kategori">
+
+<input id="hargaProduk" class="form-control mb-2" placeholder="Harga">
+<input id="modalProduk" class="form-control mb-2" placeholder="Modal">
+<input id="stokProduk" class="form-control mb-2" placeholder="Stok">
+<input id="warnaProduk" class="form-control mb-2" placeholder="Warna">
+<input id="ukuranProduk" class="form-control mb-2" placeholder="Ukuran">
+<input id="fotoProduk" class="form-control mb-2" placeholder="URL Foto">
+<textarea id="deskripsiProduk" class="form-control mb-2" placeholder="Deskripsi"></textarea>
+
+<button class="btn btn-primary" onclick="addProduct()">Simpan Produk</button>
+</div>
+
+<!-- EXPORT -->
+<button class="btn btn-success mb-2" onclick="exportExcel()">Export Excel</button>
+
+<!-- ================= TABLE ================= -->
+<table class="table table-bordered table-striped">
+<thead class="table-dark">
+<tr>
+<th>Order ID</th>
+<th>Tanggal</th>
+<th>Nama</th>
+<th>Produk</th>
+<th>Qty</th>
+<th>Total</th>
+<th>Status</th>
+</tr>
+</thead>
+
+<tbody id="tabelPesanan"></tbody>
+</table>
+
+<!-- PAGINATION -->
+<div class="text-center mb-3">
+<button class="btn btn-secondary btn-sm" onclick="prevPage()">Prev</button>
+<span id="pageInfo"></span>
+<button class="btn btn-secondary btn-sm" onclick="nextPage()">Next</button>
+</div>
+
+<!-- DASHBOARD -->
+<div class="row">
+<div class="col-md-3"><div class="card p-3">Produk<div id="totalProduk" class="nilai">0</div></div></div>
+<div class="col-md-3"><div class="card p-3">Pesanan<div id="totalPesanan" class="nilai">0</div></div></div>
+<div class="col-md-3"><div class="card p-3">Omzet<div id="omzet" class="nilai">0</div></div></div>
+<div class="col-md-3"><div class="card p-3">Laba<div id="laba" class="nilai">0</div></div></div>
+</div>
+
+</div>
+
+<script>
+
+const API_URL = "https://script.google.com/macros/s/AKfycbx21YfLTYfo_Oc04M7MSVQ44BliO-4I5CAdHXlHcOrXASVNgek8WnUuarN5_oPQvsW4Rw/exec";
+
+let orders = [];
+let page = 1;
+const limit = 5;
+
+/* ================= LOGIN ================= */
+function login(){
+  if(user.value==="admin" && pass.value==="1234"){
+    loginBox.style.display="none";
+    app.style.display="block";
+    loadOrders();
+    loadDashboard();
+  } else alert("Login gagal");
+}
+
+/* ================= LOAD ORDERS ================= */
+function loadOrders(){
+fetch(API_URL+"?action=getOrders")
+.then(r=>r.json())
+.then(data=>{
+orders = data || [];
+renderTable();
+});
+}
+
+/* ================= RENDER TABLE ================= */
+function renderTable(){
+
+let start = (page-1)*limit;
+let end = start+limit;
+
+let slice = orders.slice(start,end);
+
+let html="";
+
+slice.forEach(o=>{
+
+html+=`
+<tr>
+<td>${o.orderId}</td>
+<td>${o.tanggal}</td>
+<td>${o.nama}</td>
+<td>${o.produk}</td>
+<td>${o.qty}</td>
+<td>Rp ${Number(o.total||0).toLocaleString()}</td>
+
+<td>
+<select class="form-select form-select-sm"
+onchange="updateStatus('${o.orderId}',this.value)">
+
+<option ${o.status==="Menunggu"?"selected":""}>Menunggu</option>
+<option ${o.status==="Diproses"?"selected":""}>Diproses</option>
+<option ${o.status==="Dikirim"?"selected":""}>Dikirim</option>
+<option ${o.status==="Selesai"?"selected":""}>Selesai</option>
+
+</select>
+</td>
+
+</tr>`;
+});
+
+tabelPesanan.innerHTML = html;
+pageInfo.innerText = `${page}/${Math.ceil(orders.length/limit)}`;
+
+}
+
+/* ================= PAGINATION ================= */
+function nextPage(){
+if(page < Math.ceil(orders.length/limit)){
+page++;
+renderTable();
+}
+}
+
+function prevPage(){
+if(page > 1){
+page--;
+renderTable();
+}
+}
+
+/* ================= UPDATE STATUS ================= */
+function updateStatus(id,status){
+
+  console.log("ORDER ID:",id);
+  console.log("STATUS:",status);
+
+  const url =
+    API_URL +
+    "?action=updateOrderStatus" +
+    "&orderId=" + encodeURIComponent(id) +
+    "&status=" + encodeURIComponent(status);
+
+  fetch(url)
+  .then(r => r.json())
+  .then(res => {
+
+    alert(res.message);
+
+    if(res.status){
+      loadOrders();
+    }
+
+  })
+  .catch(err => {
+
+    console.error(err);
+    alert("Gagal update status");
+
+  });
+
+}
+/* ================= ADD PRODUCT ================= */
+function addProduct(){
+
+  const url =
+    API_URL +
+    "?action=addProduct" +
+    "&nama=" + encodeURIComponent(document.getElementById("namaProduk").value) +
+    "&kategori=" + encodeURIComponent(document.getElementById("kategoriProduk").value) +
+    "&harga=" + encodeURIComponent(document.getElementById("hargaProduk").value) +
+    "&modal=" + encodeURIComponent(document.getElementById("modalProduk").value) +
+    "&stok=" + encodeURIComponent(document.getElementById("stokProduk").value) +
+    "&warna=" + encodeURIComponent(document.getElementById("warnaProduk").value) +
+    "&ukuran=" + encodeURIComponent(document.getElementById("ukuranProduk").value) +
+    "&foto=" + encodeURIComponent(document.getElementById("fotoProduk").value) +
+    "&deskripsi=" + encodeURIComponent(document.getElementById("deskripsiProduk").value);
+
+  fetch(url)
+  .then(res => res.json())
+  .then(res => {
+
+    alert(res.message);
+
+    if(res.status){
+
+      document.getElementById("namaProduk").value = "";
+      document.getElementById("kategoriProduk").value = "";
+      document.getElementById("hargaProduk").value = "";
+      document.getElementById("modalProduk").value = "";
+      document.getElementById("stokProduk").value = "";
+      document.getElementById("warnaProduk").value = "";
+      document.getElementById("ukuranProduk").value = "";
+      document.getElementById("fotoProduk").value = "";
+      document.getElementById("deskripsiProduk").value = "";
+
+      // refresh dashboard jika ada
+      if(typeof loadDashboard === "function"){
+        loadDashboard();
+      }
+
+      // refresh tabel produk jika ada
+      if(typeof loadProducts === "function"){
+        loadProducts();
+      }
+
+    }
+
+  })
+  .catch(err => {
+
+    console.error(err);
+    alert("Gagal menyimpan produk");
+
+  });
+
+}
+/* ================= DASHBOARD ================= */
+function loadDashboard(){
+fetch(API_URL+"?action=dashboard")
+.then(r=>r.json())
+.then(d=>{
+totalProduk.innerText=d.totalProduk;
+totalPesanan.innerText=d.totalPesanan;
+omzet.innerText="Rp "+Number(d.omzet||0).toLocaleString();
+laba.innerText="Rp "+Number(d.estimasiLaba||0).toLocaleString();
+
+drawChart(d.omzet,d.estimasiLaba);
+});
+}
+
+/* ================= CHART ================= */
+function drawChart(o,l){
+
+if(window.myChart) window.myChart.destroy();
+
+window.myChart = new Chart(chart,{
+type:"bar",
+data:{
+labels:["Omzet","Laba"],
+datasets:[{data:[o,l]}]
+},
+options:{
+plugins:{legend:{display:false}},
+scales:{y:{display:false}}
+}
+});
+
+}
+
+/* ================= EXPORT ================= */
+function exportExcel(){
+
+let csv="OrderID,Tanggal,Nama,Produk,Qty,Total,Status\n";
+
+orders.forEach(o=>{
+csv+=`${o.orderId},${o.tanggal},${o.nama},${o.produk},${o.qty},${o.total},${o.status}\n`;
+});
+
+let a=document.createElement("a");
+a.href=URL.createObjectURL(new Blob([csv]));
+a.download="laporan.csv";
+a.click();
+
+}
+
+/* ================= INIT ================= */
+window.onload=function(){
+loadOrders();
+loadDashboard();
+}
+
+</script>
+
+</body>
+</html>
