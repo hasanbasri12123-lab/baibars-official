@@ -52,6 +52,26 @@ padding:3px;
 BAIBARS OFFICIAL SHOP
 
 </span>
+<div class="alert alert-warning mt-3">
+
+<h5>📌 Alur Pembelian</h5>
+
+<ol class="mb-0">
+<li>Pilih produk yang ingin dibeli dengan klik <b>Tambah Keranjang</b>.</li>
+
+<li>Lakukan pembayaran melalui transfer bank ke:<br>
+<b>0277060906 a.n Hasan Basri</b></li>
+
+<li>Upload bukti pembayaran.</li>
+
+<li>Klik <b>Checkout</b>.</li>
+
+<li>Simpan <b>Kode Pesanan</b> yang muncul setelah checkout.</li>
+
+<li>Klik <b>Chat Penjual</b> untuk mengirimkan kode pesanan agar pesanan segera diproses.</li>
+
+<li>Pantau status pesanan secara berkala.</li>
+</ol>
 
 </div>
 
@@ -114,13 +134,31 @@ placeholder="Nomor HP / WhatsApp">
 id="alamat"
 class="form-control mb-2"
 placeholder="Alamat Lengkap"></textarea>
+<!-- 🟢 TAMBAHAN BARU: METODE PEMBAYARAN -->
+<div class="mb-2">
 
+  <label class="form-label">Metode Pembayaran</label>
+
+  <select id="metodeBayar" class="form-control">
+    <option value="Transfer Bank">Transfer Bank</option>
+    <option value="QRIS">QRIS</option>
+  </select>
+
+</div>
+
+<div class="alert alert-info mb-2">
+  <b>Transfer Bank:</b><br>
+  0277060906 a.n Hasan Basri<br>
+  saat checkout
+</div>
+
+<label class="form-label">Bukti Pembayaran</label>
+<input type="file" id="buktiBayar" class="form-control mb-2">
 <button
+id="btnCheckout"
 class="btn btn-success w-100"
 onclick="checkout()">
-
 Checkout
-
 </button>
 <div class="mt-3">
 
@@ -132,7 +170,25 @@ class="btn btn-success w-100">
 💬 Chat Penjual
 
 </a>
+<hr>
 
+<h5>Cek Status Pesanan</h5>
+
+<input
+type="text"
+id="cekOrderId"
+class="form-control mb-2"
+placeholder="Masukkan Kode Order">
+
+<button
+class="btn btn-primary w-100"
+onclick="cekPesanan()">
+
+🔎 Cek Pesanan
+
+</button>
+
+<div id="hasilPesanan" class="mt-3"></div>
 
 </div>
 
@@ -313,12 +369,30 @@ document.getElementById("cartTotal").innerText =
 total.toLocaleString();
 
 }
-
+function toBase64(file){
+  return new Promise((resolve,reject)=>{
+    let reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+    reader.readAsDataURL(file);
+  });
+}
 async function checkout(){
+
+const btn =
+document.getElementById("btnCheckout");
+
+btn.disabled = true;
+btn.innerHTML =
+"⏳ Memproses Pesanan...";
 
 if(cart.length === 0){
 
 alert("Keranjang masih kosong");
+
+btn.disabled = false;
+btn.innerHTML = "Checkout";
+
 return;
 
 }
@@ -338,31 +412,37 @@ alert(
 "Silakan lengkapi data pembeli"
 );
 
+btn.disabled = false;
+btn.innerHTML = "Checkout";
+
 return;
 
 }
 
 try{
+let file = document.getElementById("buktiBayar").files[0];
+let bukti = "";
 
-const response =
-await fetch(API_URL,{
-
+if(file){
+  bukti = await toBase64(file);
+}
+const response = await fetch(API_URL,{
 method:"POST",
-
 body: JSON.stringify({
+  action:"addOrder",
 
-action:"addOrder",
+  orderToken:
+    Date.now() + "_" + hp,
 
-nama:nama,
+  nama:nama,
+  hp:hp,
+  alamat:alamat,
 
-hp:hp,
+  metodeBayar: document.getElementById("metodeBayar").value,
+  buktiBayar: bukti,
 
-alamat:alamat,
-
-items:cart
-
+  items:cart
 })
-
 });
 
 const result =
@@ -374,6 +454,9 @@ alert(
 "Pesanan berhasil dibuat\nNomor Order: "
 + result.orderId
 );
+
+btn.innerHTML =
+"✅ Pesanan Berhasil";
 
 cart = [];
 
@@ -387,6 +470,9 @@ document.getElementById("alamat").value="";
 
 alert("Gagal menyimpan pesanan");
 
+btn.disabled = false;
+btn.innerHTML = "Checkout";
+
 }
 
 }catch(error){
@@ -397,10 +483,100 @@ alert(
 "Terjadi kesalahan saat checkout"
 );
 
-}
+btn.disabled = false;
+btn.innerHTML = "Checkout";
 
 }
 
+}
+async function cekPesanan(){
+
+  const orderId =
+    document.getElementById("cekOrderId").value;
+
+  if(!orderId){
+    alert("Masukkan kode order");
+    return;
+  }
+
+  try{
+
+    const res =
+      await fetch(
+        API_URL +
+        "?action=cekPesanan&orderId=" +
+        encodeURIComponent(orderId)
+      );
+
+    const data = await res.json();
+
+    if(!data.status){
+
+      document.getElementById("hasilPesanan").innerHTML =
+      `<div class="alert alert-danger">
+        Pesanan tidak ditemukan
+      </div>`;
+
+      return;
+    }
+
+    let produkHtml = "";
+
+    data.daftarProduk.forEach(p=>{
+
+      produkHtml += `
+      <li>
+        ${p.produk}
+        (${p.qty})
+      </li>`;
+    });
+
+    document.getElementById("hasilPesanan").innerHTML = `
+
+    <div class="card">
+
+      <div class="card-body">
+
+        <h6>Kode Order</h6>
+        <b>${data.orderId}</b>
+
+        <hr>
+
+        <h6>Daftar Produk</h6>
+
+        <ul>
+          ${produkHtml}
+        </ul>
+
+        <p>
+        <b>Total:</b>
+        Rp ${Number(data.total).toLocaleString()}
+        </p>
+
+        <p>
+        <b>Status Bayar:</b>
+        ${data.statusBayar}
+        </p>
+
+        <p>
+        <b>Status Pesanan:</b>
+        ${data.statusPesanan}
+        </p>
+
+      </div>
+
+    </div>
+    `;
+
+  }catch(err){
+
+    console.log(err);
+
+    alert("Gagal mengambil data");
+
+  }
+
+}
 </script>
 
 
