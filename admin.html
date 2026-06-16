@@ -75,11 +75,15 @@ canvas{max-height:160px}
 <input id="kategoriProduk" class="form-control mb-2" placeholder="Kategori">
 
 <input id="hargaProduk" class="form-control mb-2" placeholder="Harga">
-<input id="modalProduk" class="form-control mb-2" placeholder="Modal">
+<input id="modalProduk" class="form-control mb-2" placeholder="Modal / Harga Modal">
 <input id="stokProduk" class="form-control mb-2" placeholder="Stok">
 <input id="warnaProduk" class="form-control mb-2" placeholder="Warna">
 <input id="ukuranProduk" class="form-control mb-2" placeholder="Ukuran">
-<input id="fotoProduk" class="form-control mb-2" placeholder="URL Foto">
+<input
+type="file"
+id="fotoProduk"
+class="form-control mb-2"
+accept="image/*">
 <textarea id="deskripsiProduk" class="form-control mb-2" placeholder="Deskripsi"></textarea>
 
 <button class="btn btn-primary" onclick="addProduct()">Simpan Produk</button>
@@ -98,6 +102,8 @@ canvas{max-height:160px}
 <th>Produk</th>
 <th>Qty</th>
 <th>Total</th>
+<th>Metode Bayar</th>
+<th>Bukti</th>
 <th>Status</th>
 </tr>
 </thead>
@@ -162,14 +168,36 @@ let html="";
 
 slice.forEach(o=>{
 
-html+=`
+html += `
 <tr>
+
 <td>${o.orderId}</td>
+
 <td>${o.tanggal}</td>
+
 <td>${o.nama}</td>
+
 <td>${o.produk}</td>
+
 <td>${o.qty}</td>
+
 <td>Rp ${Number(o.total||0).toLocaleString()}</td>
+
+<td>${o.metodeBayar || "-"}</td>
+
+<td>
+${
+o.buktiBayar
+?
+`<img
+src="${o.buktiBayar}"
+width="80"
+style="cursor:pointer;border-radius:6px"
+onclick="window.open('${o.buktiBayar}')">`
+:
+'-'
+}
+</td>
 
 <td>
 <select class="form-select form-select-sm"
@@ -183,7 +211,9 @@ onchange="updateStatus('${o.orderId}',this.value)">
 </select>
 </td>
 
-</tr>`;
+</tr>
+`;
+
 });
 
 tabelPesanan.innerHTML = html;
@@ -238,58 +268,97 @@ function updateStatus(id,status){
 
 }
 /* ================= ADD PRODUCT ================= */
-function addProduct(){
+function toBase64(file){
+  return new Promise((resolve,reject)=>{
+    let reader = new FileReader();
 
-  const url =
-    API_URL +
-    "?action=addProduct" +
-    "&nama=" + encodeURIComponent(document.getElementById("namaProduk").value) +
-    "&kategori=" + encodeURIComponent(document.getElementById("kategoriProduk").value) +
-    "&harga=" + encodeURIComponent(document.getElementById("hargaProduk").value) +
-    "&modal=" + encodeURIComponent(document.getElementById("modalProduk").value) +
-    "&stok=" + encodeURIComponent(document.getElementById("stokProduk").value) +
-    "&warna=" + encodeURIComponent(document.getElementById("warnaProduk").value) +
-    "&ukuran=" + encodeURIComponent(document.getElementById("ukuranProduk").value) +
-    "&foto=" + encodeURIComponent(document.getElementById("fotoProduk").value) +
-    "&deskripsi=" + encodeURIComponent(document.getElementById("deskripsiProduk").value);
+    reader.onload = () => resolve(reader.result);
 
-  fetch(url)
-  .then(res => res.json())
-  .then(res => {
+    reader.onerror = error => reject(error);
 
-    alert(res.message);
+    reader.readAsDataURL(file);
+  });
+}
+async function addProduct(){
 
-    if(res.status){
+  try{
 
-      document.getElementById("namaProduk").value = "";
-      document.getElementById("kategoriProduk").value = "";
-      document.getElementById("hargaProduk").value = "";
-      document.getElementById("modalProduk").value = "";
-      document.getElementById("stokProduk").value = "";
-      document.getElementById("warnaProduk").value = "";
-      document.getElementById("ukuranProduk").value = "";
-      document.getElementById("fotoProduk").value = "";
-      document.getElementById("deskripsiProduk").value = "";
+    let file =
+      document.getElementById("fotoProduk").files[0];
 
-      // refresh dashboard jika ada
-      if(typeof loadDashboard === "function"){
-        loadDashboard();
-      }
+    let foto = "";
 
-      // refresh tabel produk jika ada
-      if(typeof loadProducts === "function"){
-        loadProducts();
-      }
+    if(file){
+      foto = await toBase64(file);
+    }
+
+    const response =
+      await fetch(API_URL,{
+
+        method:"POST",
+
+        body: JSON.stringify({
+
+          action:"addProduct",
+
+          nama:
+            document.getElementById("namaProduk").value,
+
+          kategori:
+            document.getElementById("kategoriProduk").value,
+
+          harga:
+            document.getElementById("hargaProduk").value,
+
+          modal:
+            document.getElementById("modalProduk").value,
+
+          stok:
+            document.getElementById("stokProduk").value,
+
+          warna:
+            document.getElementById("warnaProduk").value,
+
+          ukuran:
+            document.getElementById("ukuranProduk").value,
+
+          foto: foto,
+
+          deskripsi:
+            document.getElementById("deskripsiProduk").value
+
+        })
+
+      });
+
+    const result =
+      await response.json();
+
+    alert(result.message);
+
+    if(result.status){
+
+      document.getElementById("namaProduk").value="";
+      document.getElementById("kategoriProduk").value="";
+      document.getElementById("hargaProduk").value="";
+      document.getElementById("modalProduk").value="";
+      document.getElementById("stokProduk").value="";
+      document.getElementById("warnaProduk").value="";
+      document.getElementById("ukuranProduk").value="";
+      document.getElementById("fotoProduk").value="";
+      document.getElementById("deskripsiProduk").value="";
+
+      loadDashboard();
 
     }
 
-  })
-  .catch(err => {
+  }catch(err){
 
-    console.error(err);
+    console.log(err);
+
     alert("Gagal menyimpan produk");
 
-  });
+  }
 
 }
 /* ================= DASHBOARD ================= */
