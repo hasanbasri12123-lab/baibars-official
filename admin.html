@@ -20,6 +20,57 @@ canvas{max-height:160px}
 <body>
 
 <!-- LOGIN -->
+  <style>
+    /* Mengatur latar belakang halaman menjadi Biru Langit (Sky Blue) */
+    body {
+      background: linear-gradient(135deg, #87CEEB 0%, #bae6fd 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 15px;
+    }
+ /* Penyelarasan Logo dan Nama Toko secara horizontal */
+    .brand-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 25px;
+    }
+
+    .brand-name {
+      font-size: 24px;
+      font-weight: 700;
+      color: #333333;
+      letter-spacing: 0.5px;
+    }
+      </style>
+</head>
+<body>
+
+  <div class="login-card">
+    
+    <!-- Bagian Logo & Nama Toko (MoaFa SHOP) -->
+    <div class="brand-container">
+      <img
+        src="https://i.ibb.co.com/q3t1qkQn/Whats-App-Image-2026-06-15-at-09-52-22.jpg"
+        alt="Logo Marketplace"
+        style="
+          height: 50px;
+          width: 50px;
+          object-fit: cover;
+          border-radius: 10px;
+          margin-right: 12px;
+          background: white;
+          padding: 3px;
+          border: 1px solid #e2e8f0;
+        "
+        onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=100';"
+      >
+      <span class="brand-name">MoaFa SHOP</span>
+    </div>
 <div id="loginBox" class="container mt-5" style="max-width:400px;">
   <h3>Login Admin</h3>
   <input id="user" class="form-control mb-2" placeholder="Username">
